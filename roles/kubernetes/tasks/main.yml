@@ -1,0 +1,24 @@
+---
+# tasks file for kubernetes
+#
+
+- name: install docker
+  include: docker.yml
+  tags:
+    - docker
+
+- name: install essential kubernetes packages
+  include: kubernetes.yml
+  tags:
+    - kubernetes
+
+#- name: install master
+#  include: master.yml
+#  when:
+#    - inventory_hostname in groups.master
+
+#- name: install nodes
+#  include: nodes.yml
+#  when:
+#    - inventory_hostname in groups.nodes
+

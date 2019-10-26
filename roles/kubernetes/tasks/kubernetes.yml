@@ -1,0 +1,84 @@
+- name: add kubernetes repo
+  yum_repository:
+    name: Kubernetes
+    baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-x86_64
+    enabled: 1
+    gpgcheck: 1
+    repo_gpgcheck: 1
+    gpgkey: https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+    description: kubernetes repo
+
+- name: disable selinux runtime
+  shell: setenforce 0
+
+- name: disable selinux persistant
+  lineinfile:
+    path: /etc/selinux/config
+    line: SELINUX=permissive
+    regexp: ^SELINUX=
+
+- name: install packages
+  package:
+    name: 
+      - kubelet
+      - kubeadm
+      - kubectl
+    state: installed
+
+- name: start and enable kubelet
+  service:
+    name: kubelet
+    state: started
+    enabled: true
+
+- name: Add the br_netfilter module
+  modprobe:
+    name: br_netfilter
+    state: present
+
+- name: sysctl settings
+  sysctl:
+    name: "{{ item }}"
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+  with_items:
+    - net.ipv4.ip_forward
+    - net.bridge.bridge-nf-call-ip6tables
+    - net.bridge.bridge-nf-call-iptables
+
+- name: open firewall ports
+  firewalld:
+    port: "{{ item }}"
+    permanent: yes
+    state: enabled
+    immediate: yes
+  with_items:
+    - 161-162/udp
+    - 6443/tcp
+    - 2379-2380/tcp
+    - 10250-10252/tcp
+    - 30000-32767/tcp
+    - 443/tcp
+    - 80/tcp
+
+
+
+- name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+  shell: |
+    swapoff -a
+
+
+
+- name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
+  replace:
+    path: /etc/fstab
+    regexp: '^(.+?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+
+- name: copy hosts file to all hosts
+  copy:
+    src: /etc/hosts
+    dest: /etc/hosts
+    mode: 0644
